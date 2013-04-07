@@ -1,36 +1,25 @@
 var cleanweb_map = cleanweb_map || (function () {
 
     var init = function(){
-        var zoom=14;
-
-
-        var stationServiceUrl = 'http://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json?api_key=DEMO_KEY&location=Boston+MA&fuel_type=ELEC';
-        var items = [];
-//        var data = {};
-        $.getJSON(stationServiceUrl, function(data) {
-            alert(data);
-            $.each(data, function(key) {
-                items.push(key);
-            });
-        });
 
         map = new OpenLayers.Map("mapdiv", {
             displayProjection: new OpenLayers.Projection("EPSG:4326")
-        });
-        
+            });
         map.addLayer(new OpenLayers.Layer.OSM({
             isBaseLayer: true,
             sphericalMercator:true
         }));
-        
+
+        var wms_projection = new OpenLayers.Projection("EPSG:4326");
+        var google_projection = new OpenLayers.Projection("EPSG:900913");
+
         var lonLat = new OpenLayers.LonLat( -71.0603, 42.3583 )
             .transform(
             new OpenLayers.Projection("EPSG:4326"), // transform from WGS 1984
             map.getProjectionObject() // to Spherical Mercator Projection
         );
 
-//        var wms_projection = new OpenLayers.Projection("EPSG:4326");
-//        var google_projection = new OpenLayers.Projection("EPSG:900913");
+        var zoom=14;
 
         var markers = new OpenLayers.Layer.Markers( "Markers" );
         map.addLayer(markers);
@@ -49,7 +38,8 @@ var cleanweb_map = cleanweb_map || (function () {
 //        });
 //
 //        map.addLayer(windTurbines);
-
+/*
+*/
         var bikeTrails =  new OpenLayers.Layer.Vector("KML", {
             projection: map.displayProjection,
             strategies: [new OpenLayers.Strategy.Fixed()],
@@ -73,18 +63,47 @@ var cleanweb_map = cleanweb_map || (function () {
 
         //map.addControl(select);
         //select.activate();
+/* 
+*/
+//Electric Charging Stations 
+map.addControl(new OpenLayers.Control.LayerSwitcher());
+var proj = new OpenLayers.Projection("EPSG:4326");
+var pointLayer = new OpenLayers.Layer.Vector("Point Layer", {
+    maxExtent: new OpenLayers.Bounds(-200,-200,200,200),
+    style: {externalGraphic: 'elec.jpg', graphicWidth: 21, graphicHeight: 25}
+});
+map.addLayers([markers, pointLayer]);
 
-        json_layer = new OpenLayers.Layer.Vector("JSON", {
-            strategies: [new OpenLayers.Strategy.Fixed()],
-            protocol: new OpenLayers.Protocol.HTTP({
-                url: "http://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json?api_key=DEMO_KEY&location=Boston+MA&fuel_type=ELEC",
-                format: new OpenLayers.Format.JSON()
-            })
-        });
+var stationServiceUrl = 'http://developer.nrel.gov/api/alt-fuel-stations/v1/nearest.json?api_key=b908359a2bbf6c31c4bb7ba24f5b5e502612c0e3&location=Boston+MA&fuel_type=ELEC';        
+$.getJSON(stationServiceUrl,function(json){    
+    fuel_stations = json.fuel_stations;
+    $.each(fuel_stations, function(index, station) {
+       //alert("lat:"+station.latitude+",long:"+station.longitude);
+        var lonlat = new OpenLayers.LonLat(station.longitude, station.latitude);
+        lonlat.transform(proj, map.getProjectionObject());
+        map.setCenter(lonlat, zoom);
+
+        var point = new OpenLayers.Geometry.Point(station.longitude, station.latitude);
+        point = point.transform(proj, map.getProjectionObject());
+        //alert(point);
+        var pointFeature = new OpenLayers.Feature.Vector(point, null, null);
+        pointLayer.addFeatures([pointFeature]);
+    });
+});     
+            
+
+/* 
+*/
+// make a kml for the data types that we don't have yet
+// eg. chp plants
 
 
+/* This is the last thing for the map to display centered
+*/
         map.setCenter (lonLat, zoom);
     };
+/* Functions to handle selecting different features 
+*/
 
     //var onPopupClose = function(evt) {
     //    select.unselectAll();
